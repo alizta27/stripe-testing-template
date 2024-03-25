@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import {
+  CardElement,
+  useStripe,
+  useElements,
+  PaymentRequestButtonElement,
+} from '@stripe/react-stripe-js';
 import styled from '@emotion/styled';
 import axios from 'axios';
 
@@ -44,6 +49,7 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
       });
 
       pr.canMakePayment().then((result) => {
+        console.log({ result });
         if (result) {
           setPaymentRequest(pr);
         }
@@ -145,6 +151,49 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
     hidePostalCode: true,
   };
 
+  useEffect(() => {
+    if (paymentRequest) {
+      paymentRequest.removeAllListeners();
+      paymentRequest.on(
+        'paymentmethod',
+        paymentRequest.on('paymentmethod', async (ev) => {
+          // Confirm the PaymentIntent without handling potential next actions (yet).
+          const { paymentIntent, error: confirmError } =
+            await stripe.confirmCardPayment(
+              clientSecret,
+              { payment_method: ev.paymentMethod.id },
+              { handleActions: false }
+            );
+
+          if (confirmError) {
+            // Report to the browser that the payment failed, prompting it to
+            // re-show the payment interface, or show an error message and close
+            // the payment interface.
+            ev.complete('fail');
+          } else {
+            // Report to the browser that the confirmation was successful, prompting
+            // it to close the browser payment method collection interface.
+            ev.complete('success');
+            // Check if the PaymentIntent requires any actions and, if so, let Stripe.js
+            // handle the flow. If using an API version older than "2019-02-11"
+            // instead check for: `paymentIntent.status === "requires_source_action"`.
+            if (paymentIntent.status === 'requires_action') {
+              // Let Stripe.js handle the rest of the payment flow.
+              const { error } = await stripe.confirmCardPayment(clientSecret);
+              if (error) {
+                // The payment failed -- ask your customer for a new payment method.
+              } else {
+                // The payment has succeeded -- show a success message to your customer.
+              }
+            } else {
+              // The payment has succeeded -- show a success message to your customer.
+            }
+          }
+        })
+      );
+    }
+  }, [paymentRequest]);
+
   return (
     <form onSubmit={handleFormSubmit}>
       <Row>
@@ -159,6 +208,11 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
         </CardElementContainer>
       </Row>
       {checkoutError && <CheckoutError>{checkoutError}</CheckoutError>}
+      {paymentRequest ? (
+        <Row>
+          <PaymentRequestButtonElement options={{ paymentRequest }} />
+        </Row>
+      ) : null}
       <Row>
         {/* TIP always disable your submit button while processing payments */}
         <SubmitButton disabled={isProcessing || !stripe}>
