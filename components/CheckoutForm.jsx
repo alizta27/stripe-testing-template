@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import styled from "@emotion/styled";
-import axios from "axios";
+import { useState } from 'react';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import styled from '@emotion/styled';
+import axios from 'axios';
 
-import Row from "./prebuilt/Row";
-import BillingDetailsFields from "./prebuilt/BillingDetailsFields";
-import SubmitButton from "./prebuilt/SubmitButton";
-import CheckoutError from "./prebuilt/CheckoutError";
+import Row from './prebuilt/Row';
+import BillingDetailsFields from './prebuilt/BillingDetailsFields';
+import SubmitButton from './prebuilt/SubmitButton';
+import CheckoutError from './prebuilt/CheckoutError';
 
 const CardElementContainer = styled.div`
   height: 40px;
@@ -23,18 +23,42 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
   const [isProcessing, setProcessingTo] = useState(false);
   const [checkoutError, setCheckoutError] = useState();
 
+  const [paymentRequest, setPaymentRequest] = useState(null);
+
+  useEffect(() => {
+    if (stripe) {
+      const pr = stripe.paymentRequest({
+        country: 'US',
+        currency: 'usd',
+        total: {
+          label: 'Demo total',
+          amount: 1099,
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+      });
+
+      pr.canMakePayment().then((result) => {
+        if (result) {
+          setPaymentRequest(pr);
+        }
+      });
+    }
+  }, [stripe]);
+
   const stripe = useStripe();
   const elements = useElements();
-  console.log('run')
+
+  console.log('run: ', paymentRequest);
   // TIP
   // use the cardElements onChange prop to add a handler
   // for setting any errors:
 
-  const handleCardDetailsChange = ev => {
+  const handleCardDetailsChange = (ev) => {
     ev.error ? setCheckoutError(ev.error.message) : setCheckoutError();
   };
 
-  const handleFormSubmit = async ev => {
+  const handleFormSubmit = async (ev) => {
     ev.preventDefault();
 
     const billingDetails = {
@@ -44,23 +68,23 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
         city: ev.target.city.value,
         line1: ev.target.address.value,
         state: ev.target.state.value,
-        postal_code: ev.target.zip.value
-      }
+        postal_code: ev.target.zip.value,
+      },
     };
 
     setProcessingTo(true);
 
-    const cardElement = elements.getElement("card");
+    const cardElement = elements.getElement('card');
 
     try {
-      const { data: clientSecret } = await axios.post("/api/payment_intents", {
-        amount: price * 100
+      const { data: clientSecret } = await axios.post('/api/payment_intents', {
+        amount: price * 100,
       });
 
       const paymentMethodReq = await stripe.createPaymentMethod({
-        type: "card",
+        type: 'card',
         card: cardElement,
-        billing_details: billingDetails
+        billing_details: billingDetails,
       });
 
       if (paymentMethodReq.error) {
@@ -70,7 +94,7 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
       }
 
       const { error } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: paymentMethodReq.paymentMethod.id
+        payment_method: paymentMethodReq.paymentMethod.id,
       });
 
       if (error) {
@@ -99,26 +123,26 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
 
   const iframeStyles = {
     base: {
-      color: "#fff",
-      fontSize: "16px",
-      iconColor: "#fff",
-      "::placeholder": {
-        color: "#87bbfd"
-      }
+      color: '#fff',
+      fontSize: '16px',
+      iconColor: '#fff',
+      '::placeholder': {
+        color: '#87bbfd',
+      },
     },
     invalid: {
-      iconColor: "#FFC7EE",
-      color: "#FFC7EE"
+      iconColor: '#FFC7EE',
+      color: '#FFC7EE',
     },
     complete: {
-      iconColor: "#cbf4c9"
-    }
+      iconColor: '#cbf4c9',
+    },
   };
 
   const cardElementOpts = {
-    iconStyle: "solid",
+    iconStyle: 'solid',
     style: iframeStyles,
-    hidePostalCode: true
+    hidePostalCode: true,
   };
 
   return (
@@ -138,7 +162,7 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
       <Row>
         {/* TIP always disable your submit button while processing payments */}
         <SubmitButton disabled={isProcessing || !stripe}>
-          {isProcessing ? "Processing..." : `Pay $${price}`}
+          {isProcessing ? 'Processing...' : `Pay $${price}`}
         </SubmitButton>
       </Row>
     </form>
