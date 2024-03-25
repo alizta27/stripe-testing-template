@@ -25,7 +25,7 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
 
   const stripe = useStripe();
   const elements = useElements();
-
+  console.log('run')
   // TIP
   // use the cardElements onChange prop to add a handler
   // for setting any errors:
