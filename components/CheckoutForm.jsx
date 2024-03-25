@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import styled from '@emotion/styled';
 import axios from 'axios';
@@ -25,6 +25,11 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
 
   const [paymentRequest, setPaymentRequest] = useState(null);
 
+  const stripe = useStripe();
+  const elements = useElements();
+
+  console.log('run: ', paymentRequest);
+
   useEffect(() => {
     if (stripe) {
       const pr = stripe.paymentRequest({
@@ -45,11 +50,6 @@ const CheckoutForm = ({ price, onSuccessfulCheckout }) => {
       });
     }
   }, [stripe]);
-
-  const stripe = useStripe();
-  const elements = useElements();
-
-  console.log('run: ', paymentRequest);
   // TIP
   // use the cardElements onChange prop to add a handler
   // for setting any errors:
